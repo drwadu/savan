@@ -20,7 +20,9 @@ edition = "2021"
 crate-type = ["lib"]   
 
 [dependencies]
-clingo = { version = "0.6.0", git = "https://github.com/potassco/clingo-rs.git", branch = "/backport-0.6/issue43" } 
+#clingo = { version = "0.6.0", git = "https://github.com/potassco/clingo-rs.git", branch = "/backport-0.6/issue43" } 
+clingo = { version = "0.7.2", git = "https://github.com/drwadu/clingo-rs.git", branch = "solve-handle-issue", features = ["static-linking"] } 
+#clingo = { version = "0.7.2", features = ["static-linking"] }
 thiserror = "1.0.48"
 
 [dev-dependencies]
