@@ -8,7 +8,8 @@ pub(crate) fn consequences(
     route: &[SolverLiteral],
     kind: &str,
 ) -> Option<Vec<Symbol>> {
-    nav.ctl
+    let mut ctl = nav.ctl.take().unwrap(); // Take the control object out
+    ctl
         .configuration_mut()
         .map(|c| {
             c.root()
@@ -19,17 +20,16 @@ pub(crate) fn consequences(
         .ok()?;
 
     let mut xs = vec![];
-    let mut handle = nav
-        .ctl
-        .solve_mut_ref(clingo::SolveMode::YIELD, route)
+    let mut handle = ctl
+        .solve(clingo::SolveMode::YIELD, route)
         .ok()?;
 
     while let Ok(Some(ys)) = handle.model() {
         xs = ys.symbols(clingo::ShowType::SHOWN).ok()?;
         handle.resume().ok()?;
     }
-
-    nav.ctl
+    let mut ctl = handle.close().ok().unwrap();
+    ctl
         .configuration_mut()
         .map(|c| {
             c.root()
@@ -38,7 +38,7 @@ pub(crate) fn consequences(
                 .ok()
         })
         .ok()?;
-
+    nav.ctl = Some(ctl); // Put the control object back
     Some(xs)
 }
 
