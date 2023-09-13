@@ -11,7 +11,7 @@ use clingo::{Control, Part, SolverLiteral, Symbol};
 use std::collections::HashMap;
 
 pub struct Navigator {
-    ctl: Control,
+    ctl: Option<Control>,
     literals: HashMap<Symbol, SolverLiteral>,
 }
 impl Navigator {
@@ -30,7 +30,7 @@ impl Navigator {
             literals.insert(atom.symbol()?, atom.literal()?);
         }
 
-        Ok(Self { ctl, literals })
+        Ok(Self { ctl:Some(ctl), literals })
     }
 
     /// Enumerates solutions under current route extended by facets in **peek_on**.
@@ -45,10 +45,11 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
+
+        let ctl = self.ctl.take().unwrap();  // Take the control object out
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
-        let mut handle = self
-            .ctl
-            .solve_mut_ref(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut handle = ctl
+            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
         let mut i = 0;
 
         match upper_bound {
@@ -83,9 +84,10 @@ impl Navigator {
             }
         }
 
-        handle
+        let ctl = handle
             .close()
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
+        self.ctl = Some(ctl); // Put the control object back
 
         return Ok(i);
     }
@@ -102,10 +104,10 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
+        let ctl = self.ctl.take().unwrap(); // Take the control object out
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
-        let mut handle = self
-            .ctl
-            .solve_mut_ref(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut handle = ctl
+            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
 
         let mut i = 0;
 
@@ -127,20 +129,23 @@ impl Navigator {
             }
         }
 
-        handle
+        let ctl = handle
             .close()
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
 
+        self.ctl = Some(ctl); // Put the control object back
         return Ok(i);
     }
 }
 impl Navigator {
     #[allow(unused)]
     fn assume(&mut self, route: &[SolverLiteral]) -> Result<()> {
-        self.ctl
+        let mut ctl = self.ctl.take().unwrap(); // Take rhe control object out
+        let res = ctl
             .backend()
             .and_then(|mut b| b.assume(route))
-            .map_err(|e| errors::NavigatorError::Clingo(e))
+            .map_err(|e| errors::NavigatorError::Clingo(e));
+        res
     }
 
     fn expression_to_literal(&self, expression: impl ToString) -> Option<SolverLiteral> {
