@@ -8,9 +8,8 @@ pub(crate) fn consequences(
     route: &[SolverLiteral],
     kind: &str,
 ) -> Option<Vec<Symbol>> {
-    let mut ctl = nav.ctl.take().unwrap(); // Take the control object out
-    ctl
-        .configuration_mut()
+    let mut ctl = nav.ctl.take()?; 
+    ctl.configuration_mut()
         .map(|c| {
             c.root()
                 .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
@@ -20,17 +19,14 @@ pub(crate) fn consequences(
         .ok()?;
 
     let mut xs = vec![];
-    let mut handle = ctl
-        .solve(clingo::SolveMode::YIELD, route)
-        .ok()?;
+    let mut handle = ctl.solve(clingo::SolveMode::YIELD, route).ok()?;
 
     while let Ok(Some(ys)) = handle.model() {
         xs = ys.symbols(clingo::ShowType::SHOWN).ok()?;
         handle.resume().ok()?;
     }
-    let mut ctl = handle.close().ok().unwrap();
-    ctl
-        .configuration_mut()
+    let mut ctl = handle.close().ok()?;
+    ctl.configuration_mut()
         .map(|c| {
             c.root()
                 .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
@@ -38,7 +34,8 @@ pub(crate) fn consequences(
                 .ok()
         })
         .ok()?;
-    nav.ctl = Some(ctl); // Put the control object back
+    nav.ctl = Some(ctl);
+
     Some(xs)
 }
 

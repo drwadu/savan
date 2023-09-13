@@ -5,27 +5,16 @@ edition = "2021"
 authors = ["drwadu"]
 description = "core library for answer set navigation."
 repository = "https://github.com/drwadu/savan"
-keywords = [ "logic programming", "answer set programming", "answer set navigation", "declarative problem solving", "symbolic ai"]
+keywords = ["logic programming", "answer set programming", "answer set navigation"]
 license = "MIT"
 
 [lib]
 name = "savan"
 path = "src/lib.rs"
 test = true
-doctest = true         
-bench = true           
-doc = true             
-harness = true         
 edition = "2021"       
 crate-type = ["lib"]   
 
 [dependencies]
-#clingo = { version = "0.6.0", git = "https://github.com/potassco/clingo-rs.git", branch = "/backport-0.6/issue43" } 
-clingo = { version = "0.7.2", git = "https://github.com/drwadu/clingo-rs.git", branch = "solve-handle-issue", features = ["static-linking"] } 
-#clingo = { version = "0.7.2", features = ["static-linking"] }
+clingo = { version = "0.7.2", features = ["static-linking"] }
 thiserror = "1.0"
-
-[dev-dependencies]
-rand = "0.8"
-
-

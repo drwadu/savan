@@ -10,6 +10,8 @@ use errors::Result;
 use clingo::{Control, Part, SolverLiteral, Symbol};
 use std::collections::HashMap;
 
+use self::errors::NavigatorError;
+
 pub struct Navigator {
     ctl: Option<Control>,
     literals: HashMap<Symbol, SolverLiteral>,
@@ -45,8 +47,7 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
-
-        let ctl = self.ctl.take().unwrap();  // Take the control object out
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
         let mut handle = ctl
             .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
@@ -87,7 +88,7 @@ impl Navigator {
         let ctl = handle
             .close()
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
-        self.ctl = Some(ctl); // Put the control object back
+        self.ctl = Some(ctl);
 
         return Ok(i);
     }
@@ -104,7 +105,7 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
-        let ctl = self.ctl.take().unwrap(); // Take the control object out
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
         let mut handle = ctl
             .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
@@ -132,15 +133,15 @@ impl Navigator {
         let ctl = handle
             .close()
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
+        self.ctl = Some(ctl); 
 
-        self.ctl = Some(ctl); // Put the control object back
         return Ok(i);
     }
 }
 impl Navigator {
     #[allow(unused)]
     fn assume(&mut self, route: &[SolverLiteral]) -> Result<()> {
-        let mut ctl = self.ctl.take().unwrap(); // Take rhe control object out
+        let mut ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
         let res = ctl
             .backend()
             .and_then(|mut b| b.assume(route))

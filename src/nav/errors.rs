@@ -8,6 +8,8 @@ pub enum NavigatorError {
     Clingo(#[from] clingo::ClingoError),
     #[error("Unwrapped None.")]
     None,
+    #[error("Unwrapped no control object.")]
+    NoControl,
     #[error("IOError: ")]
     IOError(#[from] std::io::Error),
     #[error("Invalid input.")]
