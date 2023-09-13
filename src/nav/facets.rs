@@ -21,14 +21,14 @@ pub(crate) fn consequences(
 
     let mut xs = vec![];
     let mut handle = ctl
-        .solve_mut_ref(clingo::SolveMode::YIELD, route)
+        .solve(clingo::SolveMode::YIELD, route)
         .ok()?;
 
     while let Ok(Some(ys)) = handle.model() {
         xs = ys.symbols(clingo::ShowType::SHOWN).ok()?;
         handle.resume().ok()?;
     }
-
+    let mut ctl = handle.close().ok().unwrap();
     ctl
         .configuration_mut()
         .map(|c| {
