@@ -39,25 +39,22 @@ pub(crate) fn consequences(
     Some(xs)
 }
 
-/// Functionalities revolving around facets under active route.
+/// Functionalities revolving around facets of a program.
 pub trait Facets {
-    /// Returns brave consequences found under active route of [Navigator](Navigator) extended by
-    /// **peek_on**.
+    /// Returns brave consequences found under **route**.
     fn brave_consequences<S: ToString>(
         &mut self,
-        peek_on: impl Iterator<Item = S>,
+        route: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>>;
-    /// Returns cautious consequences found under active route of [Navigator](Navigator) extended
-    /// by **peek_on**.
+    /// Returns cautious consequences found under **route**.
     fn cautious_consequences<S: ToString>(
         &mut self,
-        peek_on: impl Iterator<Item = S>,
+        route: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>>;
-    /// Returns facet-inducing atoms found under active route of [Navigator](Navigator) extended by
-    /// **peek_on**.
+    /// Returns facet-inducing atoms found under **route**.
     fn facet_inducing_atoms<S: ToString>(
         &mut self,
-        peek_on: impl Iterator<Item = S>,
+        route: impl Iterator<Item = S>,
     ) -> Option<HashSet<Symbol>>;
 }
 impl Facets for Navigator {

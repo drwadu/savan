@@ -35,7 +35,7 @@ impl Navigator {
         Ok(Self { ctl:Some(ctl), literals })
     }
 
-    /// Enumerates solutions under current route extended by facets in **peek_on**.
+    /// Enumerates solutions under current route extended by facets in **route**.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
     /// [None](https://doc.rust-lang.org/std/option/enum.Option.html#variant.None).
@@ -93,7 +93,7 @@ impl Navigator {
         return Ok(i);
     }
 
-    /// Enumerates solutions under current route extended by facets in **peek_on**, quietly.
+    /// Enumerates solutions under current route extended by facets in **route**, quietly.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
     /// [None](https://doc.rust-lang.org/std/option/enum.Option.html#variant.None).

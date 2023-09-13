@@ -2,27 +2,28 @@ use super::facets::consequences;
 use super::utils::ToHashSet;
 use super::Navigator;
 
+/// Returns count of specified weighting function under route.
 pub fn count<S: ToString>(
-    weight: &mut impl WeightingFunction,
+    weighting_function: &mut impl WeightingFunction,
     nav: &mut Navigator,
-    peek_on: impl Iterator<Item = S>,
+    route: impl Iterator<Item = S>,
 ) -> Option<usize> {
-    weight.count(nav, peek_on)
+    weighting_function.count(nav, route)
 }
 
-///
+/// The weight of a facet.
 #[derive(Debug, Clone)]
 pub enum Weight {
     AnswerSetCounting,
     FacetCounting,
-    //SupportedModelCounting, // TODO: set config value
 }
 
+/// Implements counting procedures.
 pub trait WeightingFunction {
     fn count<S: ToString>(
         &mut self,
         nav: &mut Navigator,
-        peek_on: impl Iterator<Item = S>,
+        route: impl Iterator<Item = S>,
     ) -> Option<usize>;
 }
 impl WeightingFunction for Weight {

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-pub trait ToHashSet<T> {
+pub(crate) trait ToHashSet<T> {
     fn to_hashset(&self) -> HashSet<T>;
     fn difference(&self, other: &[T]) -> Vec<T>;
     fn difference_as_set(&self, other: &[T]) -> HashSet<T>;

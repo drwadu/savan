@@ -1,5 +1,6 @@
 use clingo::Symbol;
 
+/// Converts facet to [String](https://doc.rust-lang.org/std/string/struct.String.html).
 pub fn repr(symbol: Symbol) -> String {
     symbol.to_string()
 }
