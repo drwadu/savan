@@ -5,7 +5,6 @@ edition = "2021"
 authors = ["drwadu"]
 description = "core library for answer set navigation."
 repository = "https://github.com/drwadu/savan"
-keywords = ["logic programming", "answer set programming", "answer set navigation"]
 license = "MIT"
 
 [lib]
