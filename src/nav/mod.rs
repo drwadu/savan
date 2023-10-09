@@ -140,11 +140,8 @@ impl Navigator {
     }
 
     /// Checks whether **atom** is part of herbrand base.
-    //pub fn is_known(&self, atom: String) -> Option<bool> {
-    pub fn is_known(&self, atom: String) -> bool {
-        //lex::parse(&atom).map(|x| self.literals.keys().any(|y| *y == x))
-        dbg!(self.literals.keys().map(|x| x.to_string()).collect::<Vec<_>>());
-        self.literals.keys().any(|y| y.to_string() == atom)
+    pub fn is_known(&self, atom: String) -> Option<bool> {
+        lex::parse(&atom).map(|x| self.literals.keys().any(|y| *y == x))
     }
 }
 impl Navigator {
