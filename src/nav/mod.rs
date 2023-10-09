@@ -32,7 +32,10 @@ impl Navigator {
             literals.insert(atom.symbol()?, atom.literal()?);
         }
 
-        Ok(Self { ctl:Some(ctl), literals })
+        Ok(Self {
+            ctl: Some(ctl),
+            literals,
+        })
     }
 
     /// Enumerates solutions under current route extended by facets in **route**.
@@ -47,10 +50,9 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
-        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
-        let mut handle = ctl
-            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut handle = ctl.solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
         let mut i = 0;
 
         match upper_bound {
@@ -105,10 +107,9 @@ impl Navigator {
         upper_bound: Option<usize>,
         route: impl Iterator<Item = S>,
     ) -> Result<usize> {
-        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
-        let mut handle = ctl
-            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut handle = ctl.solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
 
         let mut i = 0;
 
@@ -133,15 +134,20 @@ impl Navigator {
         let ctl = handle
             .close()
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
-        self.ctl = Some(ctl); 
+        self.ctl = Some(ctl);
 
         return Ok(i);
+    }
+
+    /// Checks whether **atom** is part of herbrand base.
+    pub fn is_known(&self, atom: String) -> Option<bool> {
+        lex::parse(&atom).map(|x| self.literals.keys().any(|y| *y == x))
     }
 }
 impl Navigator {
     #[allow(unused)]
     fn assume(&mut self, route: &[SolverLiteral]) -> Result<()> {
-        let mut ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?; 
+        let mut ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
         let res = ctl
             .backend()
             .and_then(|mut b| b.assume(route))

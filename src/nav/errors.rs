@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-
 #[allow(unused)]
 #[derive(Error, Debug)]
 pub enum NavigatorError {
@@ -17,4 +16,3 @@ pub enum NavigatorError {
 }
 
 pub type Result<T> = std::result::Result<T, NavigatorError>;
-

@@ -8,7 +8,7 @@ pub(crate) fn consequences(
     route: &[SolverLiteral],
     kind: &str,
 ) -> Option<Vec<Symbol>> {
-    let mut ctl = nav.ctl.take()?; 
+    let mut ctl = nav.ctl.take()?;
     ctl.configuration_mut()
         .map(|c| {
             c.root()
