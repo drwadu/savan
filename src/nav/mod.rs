@@ -165,7 +165,7 @@ impl Navigator {
     }
 
     /// Returns underlying logic program.
-    pub fn program<S: std::fmt::Display>(&self) -> String {
+    pub fn program(&self) -> String {
         let (source, _) = &self.source;
         
         source.to_owned()
