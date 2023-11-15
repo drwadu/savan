@@ -146,6 +146,11 @@ impl Navigator {
         lex::parse(&atom).map(|x| self.literals.keys().any(|y| *y == x))
     }
 
+    /// Returns atoms of ground program.
+    pub fn atoms(&self) -> impl Iterator<Item = String> + '_ {
+        self.literals.keys().map(|sym| sym.to_string())
+    }
+
     /// Adds specified `rule` from logic program.
     pub fn add_rule<S: std::fmt::Display>(&mut self, rule: S) -> Result<()> {
         let (source, args) = &self.source;
@@ -167,7 +172,7 @@ impl Navigator {
     /// Returns underlying logic program.
     pub fn program(&self) -> String {
         let (source, _) = &self.source;
-        
+
         source.to_owned()
     }
 }
