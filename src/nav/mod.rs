@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use self::errors::NavigatorError;
 
 pub struct Navigator {
+    source: (String, Vec<String>),
     ctl: Option<Control>,
     literals: HashMap<Symbol, SolverLiteral>,
 }
@@ -33,6 +34,7 @@ impl Navigator {
         }
 
         Ok(Self {
+            source: (lp, args),
             ctl: Some(ctl),
             literals,
         })
@@ -142,6 +144,36 @@ impl Navigator {
     /// Checks whether **atom** is part of herbrand base.
     pub fn is_known(&self, atom: String) -> Option<bool> {
         lex::parse(&atom).map(|x| self.literals.keys().any(|y| *y == x))
+    }
+
+    /// Returns atoms of ground program.
+    pub fn atoms(&self) -> impl Iterator<Item = String> + '_ {
+        self.literals.keys().map(|sym| sym.to_string())
+    }
+
+    /// Adds specified `rule` from logic program.
+    pub fn add_rule<S: std::fmt::Display>(&mut self, rule: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let new_source = format!("{}\n{rule}", source);
+        *self = Navigator::new(new_source, args.to_vec())?;
+
+        Ok(())
+    }
+
+    /// Removes specified `rule` from logic program.
+    pub fn remove_rule<S: ToString>(&mut self, rule: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let new_source = source.replace(&rule.to_string(), "");
+        *self = Navigator::new(new_source, args.to_vec())?;
+
+        Ok(())
+    }
+
+    /// Returns underlying logic program.
+    pub fn program(&self) -> String {
+        let (source, _) = &self.source;
+
+        source.to_owned()
     }
 }
 impl Navigator {
