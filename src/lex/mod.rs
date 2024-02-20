@@ -14,4 +14,3 @@ pub(crate) fn parse(exp: &str) -> Option<Symbol> {
         }
     }
 }
-
