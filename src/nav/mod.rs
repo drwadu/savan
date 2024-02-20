@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod facets;
+pub mod soe;
 mod utils;
 pub mod weights;
 
