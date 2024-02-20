@@ -109,7 +109,7 @@ impl Collect for Navigator {
 
         println!("-");
         let c = (i-1) as f64;
-        freq_table.iter().for_each(|(k,v)| println!("{:.2} {}", k.to_string(), *v as f64 / c));
+        freq_table.iter().for_each(|(k,v)| println!("{:.2} {}", *v as f64 / c, k.to_string()));
         println!(
         "{:?} {:?}",
         freq_table.values().filter(|v| **v != 0).count() as f64 / n as f64,
