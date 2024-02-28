@@ -164,11 +164,17 @@ impl Collect for Navigator {
 
         freq_table.iter().for_each(|(atom, freq)| {
             population_size += *freq;
-            let freq_chunk = chunks_table
-                .raw_entry_mut()
-                .from_key(freq)
-                .or_insert_with(|| (*freq, vec![*atom].to_hashset()));
-            freq_chunk.1.insert(*atom);
+            //let freq_chunk = chunks_table
+            //    .raw_entry_mut()
+            //    .from_key(freq)
+            //    .or_insert_with(|| (*freq, vec![*atom].to_hashset()));
+            //freq_chunk.1.insert(*atom);
+            chunks_table
+                .entry(*freq)
+                .and_modify(|s| {
+                    s.insert(*atom);
+                })
+                .or_insert_with(|| vec![*atom].to_hashset());
         });
         let div = 2f64.powf(entropy(&freq_table, population_size as f64));
         let r = {
