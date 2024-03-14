@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 pub trait Collect {
     fn sieve(&mut self, target_atoms: &[String]) -> super::Result<()>;
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()>;
+    fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>>;
 }
 impl Collect for Navigator {
     fn sieve(&mut self, target_atoms: &[String]) -> super::Result<()> {
@@ -78,6 +79,99 @@ impl Collect for Navigator {
         }
 
         self.remove_rule(or)
+    }
+
+    fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>> {
+        let mut out = vec![];
+
+        let mut or = ":-".to_owned();
+        target_atoms.iter().for_each(|atom| {
+            or = format!("{or} not {atom},");
+        });
+
+        or = format!("{}.", &or[..or.len() - 1]);
+        self.add_rule(or.clone())?;
+
+        let mut i = 1;
+        let mut to_observe = target_atoms.to_vec().to_hashset();
+        let mut collection = vec![].to_hashset();
+
+        while !to_observe.is_empty() {
+            let target = to_observe
+                .iter()
+                .next()
+                .and_then(|a| self.expression_to_literal(a))
+                .ok_or(NavigatorError::None)?;
+
+            let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
+            let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &[target])?;
+
+            if solve_handle
+                .get()
+                .map(|r| r == clingo::SolveResult::SATISFIABLE)?
+                == false
+            {
+                println!("info: cannot cover all target atoms");
+                println!("info: stopped search");
+                break;
+            }
+
+            #[allow(clippy::needless_collect)]
+            while let Ok(Some(model)) = solve_handle.model() {
+                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
+                    match atoms
+                        .iter()
+                        .map(|a| to_observe.remove(&a.to_string()))
+                        .collect::<Vec<_>>()
+                        .iter()
+                        .any(|v| *v)
+                    {
+                        true => {
+                            if collection.insert(atoms.clone()) {
+                                println!("solution {:?}: ", i);
+                                let mut answer_set =
+                                    "{\"Solver\": \"\", \"Input\": [\"\"], ".to_owned();
+                                answer_set = format!(
+                                    "{answer_set}\"Call\": [ {{ \"Witnesses\": [ {{ \"Value\": ["
+                                );
+                                if let Some((last, rest)) = atoms.split_last() {
+                                    for atom in rest {
+                                        answer_set =
+                                            format!("{answer_set}{:?}, ", atom.to_string());
+                                    }
+                                    answer_set = format!(
+                            "{answer_set}{:?}]}}]}}],\n\"Result\":\"SATISFIABLE\",{}{}{}",
+                            last.to_string(),
+                            "\n\"Models\":{\"Number\":1,\"More\":\"yes\"},\n\"Calls\": 1,\n",
+                            "\"Time\":{\"Total\": 0.000,\"Solve\": 0.000,",
+                            "\"Model\": 0.000,\"Unsat\": 0.000,\"CPU\": 0.000}}\n"
+                        );
+                                }
+
+                                i += 1;
+                                out.push(answer_set);
+                                println!();
+
+                                break;
+                            }
+                        }
+                        _ => {
+                            solve_handle.resume()?;
+                            continue;
+                        } // did not observe anything new
+                    }
+                }
+            }
+
+            let ctl = solve_handle
+                .close()
+                .map_err(|e| NavigatorError::Clingo(e))?;
+            self.ctl = Some(ctl);
+        }
+
+        self.remove_rule(or)?;
+
+        Ok(out)
     }
 
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()> {
