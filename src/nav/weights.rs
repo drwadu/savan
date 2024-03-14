@@ -1,6 +1,7 @@
 use super::facets::consequences;
 use super::utils::ToHashSet;
 use super::Navigator;
+use iascar::counter::Counter;
 
 /// Returns count of specified weighting function under route.
 pub fn count<S: ToString>(
@@ -56,6 +57,68 @@ impl WeightingFunction for Weight {
                 }
             }
             Self::AnswerSetCounting => nav.enumerate_solutions_quietly(None, peek_on).ok(),
+        }
+    }
+}
+
+/// Implements iascar-based counting procedures.
+pub trait WeightingFunctionIascar {
+    fn find_max_weighted(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<String>;
+    fn find_min_weighted(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<String>;
+    fn show_all(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<()>;
+}
+impl WeightingFunctionIascar for Weight {
+    fn find_max_weighted(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<String> {
+        let counter = Counter::new(ccg_path).ok()?;
+        match self {
+            Self::AnswerSetCounting => counter.find_min_among(route, among),
+            Self::FacetCounting => todo!(),
+        }
+    }
+
+    fn find_min_weighted(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<String> {
+        let counter = Counter::new(ccg_path).ok()?;
+        match self {
+            Self::AnswerSetCounting => counter.find_max_among(route, among),
+            Self::FacetCounting => todo!(),
+        }
+    }
+
+    fn show_all(
+        &mut self,
+        route: &[String],
+        among: &[String],
+        ccg_path: String,
+    ) -> Option<()> {
+        let counter = Counter::new(ccg_path).ok()?;
+        match self {
+            Self::AnswerSetCounting => Some(counter.show_all(route, among)),
+            Self::FacetCounting => todo!(),
         }
     }
 }
