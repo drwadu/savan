@@ -98,6 +98,74 @@ impl Navigator {
         return Ok(i);
     }
 
+    /// TODO
+    pub fn enumerate_solutions_outf2<S: ToString>(
+        &mut self,
+        upper_bound: Option<usize>,
+        route: impl Iterator<Item = S>,
+    ) -> Result<usize> {
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
+        let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
+        let mut handle = ctl.solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut i = 0;
+
+        match upper_bound {
+            None => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    //println!("solution {:?}: ", i + 1);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    println!();
+                    println!("{{{:?}: {:?},{:?}: [{:?}],", "Solver", "", "Input", "");
+                    print!(
+                        "{:?}: [ {{ {:?}: [ {{ {:?}: [",
+                        "Call", "Witnesses", "Value"
+                    );
+                    if let Some((last, rest)) = atoms.split_last() {
+                        rest.iter().for_each(|atom| {
+                            print!("{:?}, ", atom.to_string());
+                        });
+                        println!(
+                            "{:?}] }} ] }} ],\n{:?}: {:?},\n{:?}: {{ {:?}: 1, {:?}: {:?} }},\n{:?}: 1,\n{:?}: {{ {:?}: 0.000, {:?}: 0.000, {:?}: 0.000, {:?}: 0.000, {:?}: 0.000 }} }}",
+                            last.to_string(),
+                            "Result",
+                            "SATISFIABLE",
+                            "Models",
+                            "Number",
+                            "More",
+                            "yes", "Calls", "Time", "Total", "Solve", "Model", "Unsat", "CPU"
+                        );
+                    }
+
+                    i += 1;
+                    handle.resume()?;
+                }
+            }
+            Some(n) => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    println!("solution {:?}: ", i + 1);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms.iter().for_each(|atom| {
+                        print!("{} ", atom.to_string());
+                    });
+                    println!();
+
+                    i += 1;
+                    if i == n {
+                        break;
+                    }
+                    handle.resume()?;
+                }
+            }
+        }
+
+        let ctl = handle
+            .close()
+            .map_err(|e| errors::NavigatorError::Clingo(e))?;
+        self.ctl = Some(ctl);
+
+        return Ok(i);
+    }
+
     /// Enumerates solutions under current route extended by facets in **route**, quietly.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
@@ -234,6 +302,9 @@ mod tests {
         let n = nav.enumerate_solutions(None, ["a"].iter())?;
         assert_eq!(n, 1);
 
+        let n = nav.enumerate_solutions_outf2(None, ["a"].iter())?;
+        assert_eq!(n, 1);
+
         let n = nav.enumerate_solutions(None, ["a", "b"].iter())?;
         assert_eq!(n, 0);
 
@@ -266,6 +337,16 @@ mod tests {
             let n = nav.enumerate_solutions(Some(ub), ["b"].iter())?;
             assert_eq!(n, ub);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn enumerate_outf2() -> Result<()> {
+        let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+
+        let n = nav.enumerate_solutions_outf2(None, ["a"].iter())?;
+        assert_eq!(n, 1);
 
         Ok(())
     }
