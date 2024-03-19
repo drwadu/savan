@@ -39,6 +39,42 @@ pub(crate) fn consequences(
     Some(xs)
 }
 
+pub(crate) fn consequences_count(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    kind: &str,
+) -> Option<usize> {
+    let mut ctl = nav.ctl.take()?;
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                .map(|sk| c.value_set(sk, kind))
+                .ok()
+        })
+        .ok()?;
+
+    let mut count = 0;
+    let mut handle = ctl.solve(clingo::SolveMode::YIELD, route).ok()?;
+
+    while let Ok(Some(ys)) = handle.model() {
+        count = ys.symbols(clingo::ShowType::SHOWN).ok()?.len();
+        handle.resume().ok()?;
+    }
+    let mut ctl = handle.close().ok()?;
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                .map(|sk| c.value_set(sk, "auto"))
+                .ok()
+        })
+        .ok()?;
+    nav.ctl = Some(ctl);
+
+    Some(count)
+}
+
 /// Functionalities revolving around facets of a program.
 pub trait Facets {
     /// Returns brave consequences found under **route**.

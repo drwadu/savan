@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod facets;
+pub mod soe;
 mod utils;
 pub mod weights;
 
@@ -97,6 +98,91 @@ impl Navigator {
         return Ok(i);
     }
 
+    /// Enumerates solutions under current route extended by facets in **route**
+    /// in format required by clingraph.
+    ///
+    /// Will enumerate all existing solutions, if **upper_bound** is
+    /// [None](https://doc.rust-lang.org/std/option/enum.Option.html#variant.None).
+    /// Otherwise, enumeration stops after **upper_bound** was reached.
+    ///
+    /// Returns one JSON per solution.
+    #[allow(unused_assignments)]
+    pub fn enumerate_solutions_outf2<S: ToString>(
+        &mut self,
+        upper_bound: Option<usize>,
+        route: impl Iterator<Item = S>,
+    ) -> Result<Vec<String>> {
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
+        let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
+        let mut handle = ctl.solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut i = 0;
+
+        let mut out = vec![];
+
+        match upper_bound {
+            None => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    print!(".");
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    let mut answer_set = "{\"Solver\": \"\", \"Input\": [\"\"], ".to_owned();
+                    answer_set =
+                        format!("{answer_set}\"Call\": [ {{ \"Witnesses\": [ {{ \"Value\": [");
+                    if let Some((last, rest)) = atoms.split_last() {
+                        for atom in rest {
+                            answer_set = format!("{answer_set}{:?}, ", atom.to_string());
+                        }
+                        answer_set = format!(
+                            "{answer_set}{:?}]}}]}}],\n\"Result\":\"SATISFIABLE\",{}{}{}",
+                            last.to_string(),
+                            "\n\"Models\":{\"Number\":1,\"More\":\"yes\"},\n\"Calls\": 1,\n",
+                            "\"Time\":{\"Total\": 0.000,\"Solve\": 0.000,",
+                            "\"Model\": 0.000,\"Unsat\": 0.000,\"CPU\": 0.000}}\n"
+                        );
+                    }
+
+                    i += 1;
+                    out.push(answer_set);
+                    handle.resume()?;
+                }
+            }
+            Some(n) => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    print!(".");
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    let mut answer_set = "{\"Solver\": \"\", \"Input\": [\"\"], ".to_owned();
+                    answer_set =
+                        format!("{answer_set}\"Call\": [ {{ \"Witnesses\": [ {{ \"Value\": [");
+                    if let Some((last, rest)) = atoms.split_last() {
+                        for atom in rest {
+                            answer_set = format!("{answer_set}{:?}, ", atom.to_string());
+                        }
+                        answer_set = format!(
+                            "{answer_set}{:?}]}}]}}],\n\"Result\":\"SATISFIABLE\",{}{}{}",
+                            last.to_string(),
+                            "\n\"Models\":{\"Number\":1,\"More\":\"yes\"},\n\"Calls\": 1,\n",
+                            "\"Time\":{\"Total\": 0.000,\"Solve\": 0.000,",
+                            "\"Model\": 0.000,\"Unsat\": 0.000,\"CPU\": 0.000}}\n"
+                        );
+                    }
+
+                    i += 1;
+                    out.push(answer_set);
+                    if i == n {
+                        break;
+                    }
+                    handle.resume()?;
+                }
+            }
+        }
+
+        let ctl = handle
+            .close()
+            .map_err(|e| errors::NavigatorError::Clingo(e))?;
+        self.ctl = Some(ctl);
+
+        return Ok(out);
+    }
+
     /// Enumerates solutions under current route extended by facets in **route**, quietly.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
@@ -171,6 +257,13 @@ impl Navigator {
 
     /// Returns underlying logic program.
     pub fn program(&self) -> String {
+        let (source, _) = &self.source;
+
+        source.to_owned()
+    }
+
+    /// Resets current program to initial program.
+    pub fn reset_program(&self) -> String {
         let (source, _) = &self.source;
 
         source.to_owned()
@@ -264,6 +357,18 @@ mod tests {
         for ub in [1] {
             let n = nav.enumerate_solutions(Some(ub), ["b"].iter())?;
             assert_eq!(n, ub);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn enumerate_outf2() -> Result<()> {
+        let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+
+        let o = nav.enumerate_solutions_outf2(None, ["b"].iter())?;
+        for ele in o.iter() {
+            print!("{ele}")
         }
 
         Ok(())
