@@ -1,5 +1,4 @@
-use super::facets::consequences;
-use super::utils::ToHashSet;
+use super::facets::consequences_count;
 use super::Navigator;
 
 /// Returns count of specified weighting function under route.
@@ -39,20 +38,13 @@ impl WeightingFunction for Weight {
                     .flatten()
                     .collect::<Vec<_>>();
 
-                let brave_consequences = consequences(nav, &route, "brave")?;
-
-                match !brave_consequences.is_empty() {
-                    true => consequences(nav, &route, "cautious").as_ref().and_then(
-                        |cautious_consequences| {
-                            Some(
-                                2 * brave_consequences
-                                    .difference_as_set(cautious_consequences)
-                                    .iter()
-                                    .count(),
-                            )
-                        },
-                    ),
-                    _ => Some(0),
+                let brave_consequences_count = consequences_count(nav, &route, "brave");
+                if brave_consequences_count == Some(0) {
+                    brave_consequences_count
+                } else {
+                    brave_consequences_count.and_then(|bcs| {
+                        consequences_count(nav, &route, "cautious").map(|ccs| 2 * (bcs - ccs))
+                    })
                 }
             }
             Self::AnswerSetCounting => nav.enumerate_solutions_quietly(None, peek_on).ok(),
