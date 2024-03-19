@@ -261,6 +261,13 @@ impl Navigator {
 
         source.to_owned()
     }
+
+    /// Resets current program to initial program.
+    pub fn reset_program(&self) -> String {
+        let (source, _) = &self.source;
+
+        source.to_owned()
+    }
 }
 impl Navigator {
     #[allow(unused)]
