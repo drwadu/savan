@@ -98,6 +98,73 @@ impl Navigator {
         return Ok(i);
     }
 
+    /// Enumerates solutions under current route extended by facets in **route** and projected onto
+    /// **project_on**.
+    ///
+    /// Will enumerate all existing solutions, if **upper_bound** is
+    /// [None](https://doc.rust-lang.org/std/option/enum.Option.html#variant.None).
+    /// Otherwise, enumeration stops after **upper_bound** was reached.
+    ///
+    /// Prints the solutions, and returns the number of enumerated solutions.
+    pub fn enumerate_projected_solutions<S: ToString>(
+        &mut self,
+        upper_bound: Option<usize>,
+        route: impl Iterator<Item = S>,
+        project_on: Vec<String>,
+    ) -> Result<usize> {
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl)?;
+        let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
+        let mut handle = ctl.solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())?;
+        let mut i = 0;
+
+        match upper_bound {
+            None => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    println!("solution {:?}: ", i + 1);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| project_on.contains(atom))
+                        .for_each(|atom| {
+                            print!("{} ", atom);
+                        });
+                    println!();
+
+                    i += 1;
+                    handle.resume()?;
+                }
+            }
+            Some(n) => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    println!("solution {:?}: ", i + 1);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| project_on.contains(atom))
+                        .for_each(|atom| {
+                            print!("{} ", atom);
+                        });
+                    println!();
+
+                    i += 1;
+                    if i == n {
+                        break;
+                    }
+                    handle.resume()?;
+                }
+            }
+        }
+
+        let ctl = handle
+            .close()
+            .map_err(|e| errors::NavigatorError::Clingo(e))?;
+        self.ctl = Some(ctl);
+
+        return Ok(i);
+    }
+
     /// Enumerates solutions under current route extended by facets in **route**
     /// in format required by clingraph.
     ///
@@ -370,6 +437,19 @@ mod tests {
         for ele in o.iter() {
             print!("{ele}")
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn enumerate_projected() -> Result<()> {
+        let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+
+        nav.enumerate_projected_solutions(
+            None,
+            ["b"].iter(),
+            vec!["c".to_string(), "d".to_string()],
+        )?;
 
         Ok(())
     }
