@@ -92,6 +92,8 @@ pub trait Facets {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<HashSet<Symbol>>;
+    /// Prints literals modeled under **route**, and returns facet-inducing atoms under **route**.
+    fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>>;
 }
 impl Facets for Navigator {
     fn brave_consequences<S: ToString>(
@@ -133,6 +135,33 @@ impl Facets for Navigator {
                 .as_ref()
                 .and_then(|ccs| Some(bcs.difference_as_set(ccs))),
             _ => Some(bcs.to_hashset()),
+        }
+    }
+
+    fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>> {
+        let bc = self
+            .brave_consequences(route.iter())
+            .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
+        let cc = self
+            .cautious_consequences(route.iter())
+            .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
+
+        facets.into_iter().for_each(|f| match cc.contains(&f) {
+            true => println!("{f}"),
+            _ => match !bc.contains(&f) {
+                true => println!("~{f}"),
+                _ => (),
+            },
+        });
+
+        match !bc.is_empty() {
+            true => Some(
+                bc.difference_as_set(&cc)
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            ),
+            _ => Some(bc),
         }
     }
 }
@@ -227,6 +256,26 @@ mod tests {
         assert!(fs.contains(&lex::parse("a").ok_or(NavigatorError::None)?));
         assert!(fs.contains(&lex::parse("b").ok_or(NavigatorError::None)?));
         assert!(fs.contains(&lex::parse("d").ok_or(NavigatorError::None)?));
+
+        Ok(())
+    }
+
+    #[test]
+    fn learned_that() -> Result<()> {
+        let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+
+        let fs = nav
+            .learned_that(
+                &vec![
+                    "a".to_owned(),
+                    "b".to_owned(),
+                    "c".to_owned(),
+                    "d".to_owned(),
+                ],
+                &vec!["a".to_owned()],
+            )
+            .ok_or(NavigatorError::None)?;
+        assert_eq!(fs.len(), 0);
 
         Ok(())
     }
