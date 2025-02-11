@@ -171,7 +171,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that contains target
             route.push(target);
-            dbg!("bc", &to_observe, &route, &target_atom.to_string());
+            //dbg!("bc", &to_observe, &route, &target_atom.to_string());
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
             if solve_handle
                 .get()
@@ -206,7 +206,6 @@ impl Facets for Navigator {
         }
         self.remove_rule(or).ok()?;
 
-        dbg!(&bcs);
         // compute ccs
         let mut fcs = vec![];
         let mut or = ":-".to_owned();
@@ -224,7 +223,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that omits target
             route.push(target.negate());
-            dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
+            //dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
             if solve_handle
                 .get()
