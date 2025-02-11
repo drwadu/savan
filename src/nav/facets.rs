@@ -275,7 +275,7 @@ impl Facets for Navigator {
                         true => break,
                         _ => {
                             solve_handle.resume().ok()?;
-                            dbg!("no news");
+                            dbg!("no news", &or);
                             continue;
                         } // did not observe anything new
                     }
