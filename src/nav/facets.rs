@@ -206,6 +206,7 @@ impl Facets for Navigator {
         }
         self.remove_rule(or).ok()?;
 
+        dbg!(&bcs);
         // compute ccs
         let mut fcs = vec![];
         let mut or = ":-".to_owned();
