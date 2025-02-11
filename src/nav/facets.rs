@@ -160,9 +160,12 @@ impl Facets for Navigator {
         // TODO: progress bar
 
         // show directives
-        target_atoms
+        let sds = target_atoms
             .iter()
-            .for_each(|a| self.add_rule(format!("#show {a}.")).unwrap());
+            .map(|a| format!("#show {a}"))
+            .collect::<Vec<_>>()
+            .join(". ");
+        self.add_rule(sds.clone()).ok()?;
 
         dbg!(target_atoms.len());
 
@@ -281,9 +284,7 @@ impl Facets for Navigator {
         }
         self.remove_rule(or).ok()?;
 
-        target_atoms
-            .iter()
-            .for_each(|a| self.remove_rule(format!("#show {a}.")).unwrap());
+        self.remove_rule(sds.clone()).ok()?;
 
         Some(fcs)
     }
