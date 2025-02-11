@@ -154,6 +154,16 @@ impl Facets for Navigator {
             .flatten()
             .collect::<Vec<_>>();
 
+        // TODO: adjust or-constraint?
+        // TODO: impact of show statements
+        // TODO: adjust show statements?
+        // TODO: progress bar
+
+        // show directives
+        target_atoms
+            .iter()
+            .for_each(|a| self.add_rule(format!("#show {a}.")).unwrap());
+
         dbg!(target_atoms.len());
 
         // compute bcs
@@ -166,7 +176,7 @@ impl Facets for Navigator {
         self.add_rule(or.clone()).ok()?;
         let mut to_observe = target_atoms.to_vec().to_hashset();
         while !to_observe.is_empty() {
-            dbg!("bcs",to_observe.len());
+            dbg!("bcs", to_observe.len());
             let (target_atom, target) = to_observe
                 .iter()
                 .next()
@@ -219,7 +229,7 @@ impl Facets for Navigator {
         self.add_rule(or.clone()).ok()?;
         let mut to_observe = bcs.clone();
         while !to_observe.is_empty() {
-            dbg!("ccs",to_observe.len());
+            dbg!("ccs", to_observe.len());
             let (target_atom, target) = to_observe
                 .iter()
                 .next()
@@ -241,7 +251,8 @@ impl Facets for Navigator {
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
-                    match to_observe.clone()
+                    match to_observe
+                        .clone()
                         .iter()
                         .map(|a| {
                             if !atoms.contains(&a) {
@@ -269,6 +280,10 @@ impl Facets for Navigator {
             route.pop();
         }
         self.remove_rule(or).ok()?;
+
+        target_atoms
+            .iter()
+            .for_each(|a| self.remove_rule(format!("#show {a}.")).unwrap());
 
         Some(fcs)
     }
