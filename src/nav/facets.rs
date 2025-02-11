@@ -166,8 +166,8 @@ impl Facets for Navigator {
             .collect::<Vec<_>>()
             .join("\n");
         self.add_rule(sds.clone()).ok()?;
-        
-        // projection 
+
+        // projection
         self.add_arg("--project=show").ok()?;
 
         dbg!(target_atoms.len());
@@ -258,7 +258,7 @@ impl Facets for Navigator {
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
-                    dbg!(&atoms);
+                    dbg!(&atoms.iter().map(|a| a.to_string()).collect::<Vec<_>>());
                     match to_observe
                         .clone()
                         .iter()
