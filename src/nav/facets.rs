@@ -154,6 +154,8 @@ impl Facets for Navigator {
             .flatten()
             .collect::<Vec<_>>();
 
+        dbg!(target_atoms.len());
+
         // compute bcs
         let mut bcs = vec![].to_hashset();
         let mut or = ":-".to_owned();
@@ -164,6 +166,7 @@ impl Facets for Navigator {
         self.add_rule(or.clone()).ok()?;
         let mut to_observe = target_atoms.to_vec().to_hashset();
         while !to_observe.is_empty() {
+            dbg!("bcs",to_observe.len());
             let (target_atom, target) = to_observe
                 .iter()
                 .next()
@@ -216,6 +219,7 @@ impl Facets for Navigator {
         self.add_rule(or.clone()).ok()?;
         let mut to_observe = bcs.clone();
         while !to_observe.is_empty() {
+            dbg!("ccs",to_observe.len());
             let (target_atom, target) = to_observe
                 .iter()
                 .next()
