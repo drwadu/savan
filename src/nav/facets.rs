@@ -251,6 +251,7 @@ impl Facets for Navigator {
                 // target is not a facet, because target is true
                 to_observe.remove(&target_atom);
             }
+            dbg!("passed check");
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
@@ -273,6 +274,7 @@ impl Facets for Navigator {
                         true => break,
                         _ => {
                             solve_handle.resume().ok()?;
+                            dbg!("no news");
                             continue;
                         } // did not observe anything new
                     }
