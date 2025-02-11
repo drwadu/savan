@@ -9,7 +9,7 @@ use crate::lex;
 use errors::Result;
 
 use clingo::{Control, Part, SolverLiteral, Symbol};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use self::errors::NavigatorError;
 
@@ -305,8 +305,12 @@ impl Navigator {
     }
 
     /// Returns atoms of ground program.
-    pub fn symbols(&self) -> impl Iterator<Item = (String,usize)> + '_ {
-        self.literals.keys().map(|s| (s.name().unwrap().to_owned(),s.arguments().unwrap().len()))
+    pub fn symbols(&self) -> impl Iterator<Item = (String, usize)> + '_ {
+        self.literals
+            .keys()
+            .map(|s| (s.name().unwrap().to_owned(), s.arguments().unwrap().len()))
+            .collect::<HashSet<_>>()
+            .into_iter()
     }
 
     /// Adds specified `rule` from logic program.
