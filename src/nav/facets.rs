@@ -223,7 +223,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that omits target
             route.push(target.negate());
-            dbg!("cc", &to_observe, &route, &target_atom.to_string());
+            dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
             if solve_handle
                 .get()
@@ -237,10 +237,11 @@ impl Facets for Navigator {
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
-                    match atoms
+                    match to_observe.clone()
                         .iter()
                         .map(|a| {
-                            if to_observe.remove(&a) {
+                            if !atoms.contains(&a) {
+                                to_observe.remove(&a);
                                 fcs.push(a.to_string());
                                 true
                             } else {
