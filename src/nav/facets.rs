@@ -187,7 +187,7 @@ impl Facets for Navigator {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
                     match atoms
                         .iter()
-                        .map(|a| to_observe.remove(&a.to_string()) || bcs.insert(a.clone()))
+                        .map(|a| to_observe.remove(&a.to_string()) && bcs.insert(a.clone()))
                         .collect::<Vec<_>>()
                         .iter()
                         .any(|v| *v)
