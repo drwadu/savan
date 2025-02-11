@@ -159,19 +159,6 @@ impl Facets for Navigator {
         // TODO: adjust show statements?
         // TODO: progress bar
 
-        // show directives
-        let sds = target_atoms
-            .iter()
-            .map(|a| format!("#show {a}."))
-            .collect::<Vec<_>>()
-            .join("\n");
-        self.add_rule(sds.clone()).ok()?;
-
-        // projection
-        self.add_arg("--project=show").ok()?;
-
-        dbg!(target_atoms.len());
-
         // compute bcs
         let mut bcs = vec![].to_hashset();
         let mut or = ":-".to_owned();
@@ -243,7 +230,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that omits target
             route.push(target.negate());
-            dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
+            //dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
             if solve_handle
                 .get()
@@ -289,10 +276,6 @@ impl Facets for Navigator {
             route.pop();
         }
         self.remove_rule(or).ok()?;
-
-        self.remove_rule(sds.clone()).ok()?;
-
-        self.remove_arg("--project=show").ok()?;
 
         Some(fcs)
     }
