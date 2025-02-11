@@ -304,6 +304,11 @@ impl Navigator {
         self.literals.keys().map(|sym| sym.to_string())
     }
 
+    /// Returns atoms of ground program.
+    pub fn symbols(&self) -> impl Iterator<Item = (String,usize)> + '_ {
+        self.literals.keys().map(|s| (s.name().unwrap().to_owned(),s.arguments().unwrap().len()))
+    }
+
     /// Adds specified `rule` from logic program.
     pub fn add_rule<S: std::fmt::Display>(&mut self, rule: S) -> Result<()> {
         let (source, args) = &self.source;
