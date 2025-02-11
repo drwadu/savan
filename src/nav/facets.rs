@@ -162,9 +162,9 @@ impl Facets for Navigator {
         // show directives
         let sds = target_atoms
             .iter()
-            .map(|a| format!("#show {a}"))
+            .map(|a| format!("#show {a}."))
             .collect::<Vec<_>>()
-            .join(". ");
+            .join("\n");
         self.add_rule(sds.clone()).ok()?;
 
         dbg!(target_atoms.len());
