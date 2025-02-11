@@ -166,6 +166,9 @@ impl Facets for Navigator {
             .collect::<Vec<_>>()
             .join("\n");
         self.add_rule(sds.clone()).ok()?;
+        
+        // projection 
+        self.add_arg("--projection=show").ok()?;
 
         dbg!(target_atoms.len());
 
@@ -288,6 +291,8 @@ impl Facets for Navigator {
         self.remove_rule(or).ok()?;
 
         self.remove_rule(sds.clone()).ok()?;
+
+        self.remove_arg("--projection=show").ok()?;
 
         Some(fcs)
     }

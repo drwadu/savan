@@ -322,6 +322,28 @@ impl Navigator {
         Ok(())
     }
 
+    /// Adds specified `argument`.
+    pub fn add_arg<S: std::fmt::Display>(&mut self, arg: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let mut new_args = args.clone();
+        new_args.push(arg.to_string());
+        *self = Navigator::new(source, new_args.to_vec())?;
+
+        Ok(())
+    }
+
+    /// Removes specified `argument`.
+    pub fn remove_arg<S: std::fmt::Display>(&mut self, arg: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let mut new_args = args.clone();
+        new_args.push(arg.to_string());
+        let i = args.iter().position(|x| *x == arg.to_string()).unwrap();
+        new_args.remove(i);
+        *self = Navigator::new(source, new_args.to_vec())?;
+
+        Ok(())
+    }
+
     /// Returns underlying logic program.
     pub fn program(&self) -> String {
         let (source, _) = &self.source;
