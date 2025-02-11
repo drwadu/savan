@@ -171,6 +171,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that contains target
             route.push(target);
+            dbg!(&to_observe, &route, &target_atom);
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
             if solve_handle
                 .get()
@@ -222,6 +223,7 @@ impl Facets for Navigator {
             let ctl = self.ctl.take()?;
             // try to find an answer set that omits target
             route.push(target.negate());
+            dbg!(&to_observe, &route, &target_atom);
             let mut solve_handle = ctl
                 .solve(clingo::SolveMode::YIELD, &route)
                 .ok()?;
