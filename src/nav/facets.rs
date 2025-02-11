@@ -94,6 +94,12 @@ pub trait Facets {
     ) -> Option<HashSet<Symbol>>;
     /// Prints literals modeled under **route**, and returns facet-inducing atoms under **route**.
     fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>>;
+    /// Returns facet-inducing atoms found under **route** with custom algorithm.
+    fn facets_su<S: ToString>(
+        &mut self,
+        peek_on: impl Iterator<Item = S>,
+        target_atoms: &[String],
+    ) -> Option<Vec<String>>;
 }
 impl Facets for Navigator {
     fn brave_consequences<S: ToString>(
@@ -136,6 +142,130 @@ impl Facets for Navigator {
                 .and_then(|ccs| Some(bcs.difference_as_set(ccs))),
             _ => Some(bcs.to_hashset()),
         }
+    }
+
+    fn facets_su<S: ToString>(
+        &mut self,
+        peek_on: impl Iterator<Item = S>,
+        target_atoms: &[String],
+    ) -> Option<Vec<String>> {
+        let mut route = peek_on
+            .map(|s| self.expression_to_literal(s))
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // compute bcs
+        let mut bcs = vec![].to_hashset();
+        let mut or = ":-".to_owned();
+        target_atoms.iter().for_each(|atom| {
+            or = format!("{or} not {atom},");
+        });
+        or = format!("{}.", &or[..or.len() - 1]);
+        self.add_rule(or.clone()).ok()?;
+        let mut to_observe = target_atoms.to_vec().to_hashset();
+        while !to_observe.is_empty() {
+            let (target_atom, target) = to_observe
+                .iter()
+                .next()
+                .and_then(|a| Some((a.clone(), self.expression_to_literal(a).unwrap())))?;
+            let ctl = self.ctl.take()?;
+            // try to find an answer set that contains target
+            route.push(target);
+            let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
+            if solve_handle
+                .get()
+                .map(|r| r == clingo::SolveResult::SATISFIABLE)
+                .ok()?
+                == false
+            {
+                // target atom is not a facet, because target is false
+                to_observe.remove(&target_atom);
+            }
+            #[allow(clippy::needless_collect)]
+            while let Ok(Some(model)) = solve_handle.model() {
+                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
+                    match atoms
+                        .iter()
+                        .map(|a| to_observe.remove(&a.to_string()) || bcs.insert(a.clone()))
+                        .collect::<Vec<_>>()
+                        .iter()
+                        .any(|v| *v)
+                    {
+                        true => break,
+                        _ => {
+                            solve_handle.resume().ok()?;
+                            continue;
+                        } // did not observe anything new
+                    }
+                }
+            }
+            let ctl = solve_handle.close().ok()?;
+            self.ctl = Some(ctl);
+            route.pop();
+        }
+        self.remove_rule(or).ok()?;
+
+        // compute ccs
+        let mut fcs = vec![];
+        let mut or = ":-".to_owned();
+        bcs.iter().for_each(|atom| {
+            or = format!("{or} {atom},");
+        });
+        or = format!("{}.", &or[..or.len() - 1]);
+        self.add_rule(or.clone()).ok()?;
+        let mut to_observe = bcs.clone();
+        while !to_observe.is_empty() {
+            let (target_atom, target) = to_observe
+                .iter()
+                .next()
+                .and_then(|a| Some((a.clone(), self.expression_to_literal(a).unwrap())))?;
+            let ctl = self.ctl.take()?;
+            // try to find an answer set that omits target
+            route.push(target.negate());
+            let mut solve_handle = ctl
+                .solve(clingo::SolveMode::YIELD, &route)
+                .ok()?;
+            if solve_handle
+                .get()
+                .map(|r| r == clingo::SolveResult::SATISFIABLE)
+                .ok()?
+                == false
+            {
+                // target is not a facet, because target is true
+                to_observe.remove(&target_atom);
+            }
+            #[allow(clippy::needless_collect)]
+            while let Ok(Some(model)) = solve_handle.model() {
+                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
+                    match atoms
+                        .iter()
+                        .map(|a| {
+                            if to_observe.remove(&a) {
+                                fcs.push(a.to_string());
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .iter()
+                        .any(|v| *v)
+                    {
+                        true => break,
+                        _ => {
+                            solve_handle.resume().ok()?;
+                            continue;
+                        } // did not observe anything new
+                    }
+                }
+            }
+            let ctl = solve_handle.close().ok()?;
+            self.ctl = Some(ctl);
+            route.pop();
+        }
+        self.remove_rule(or).ok()?;
+
+        Some(fcs)
     }
 
     fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>> {
