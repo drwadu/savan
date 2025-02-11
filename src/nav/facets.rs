@@ -255,6 +255,7 @@ impl Facets for Navigator {
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
+                    dbg!(&atoms);
                     match to_observe
                         .clone()
                         .iter()
