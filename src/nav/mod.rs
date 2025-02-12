@@ -265,8 +265,7 @@ impl Navigator {
         if let Ok(Some(answer_set)) = handle.model() {
             let x = Some(
                 answer_set
-                    .symbols(clingo::ShowType::SHOWN)
-                    .ok()?
+                    .symbols(clingo::ShowType::SHOWN).unwrap()
                     .clone()
                     .iter()
                     .map(|a| a.to_string())
@@ -275,14 +274,13 @@ impl Navigator {
 
             handle
                 .close()
-                .map_err(|e| errors::NavigatorError::Clingo(e))
-                .ok()?;
+                .map_err(|e| errors::NavigatorError::Clingo(e)).unwrap();
             x
         } else {
             handle
                 .close()
                 .map_err(|e| errors::NavigatorError::Clingo(e))
-                .ok()?;
+                .unwrap();
             None
         }
     }
