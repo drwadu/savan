@@ -250,6 +250,43 @@ impl Navigator {
         return Ok(out);
     }
 
+    ///
+    #[allow(unused_assignments)]
+    pub fn one_or_none<S: ToString>(
+        &mut self,
+        route: impl Iterator<Item = S>,
+    ) -> Option<Vec<String>> {
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl).ok()?;
+        let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
+        let mut handle = ctl
+            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())
+            .ok()?;
+
+        if let Ok(Some(answer_set)) = handle.model() {
+            let x = Some(
+                answer_set
+                    .symbols(clingo::ShowType::SHOWN)
+                    .ok()?
+                    .clone()
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>(),
+            );
+
+            handle
+                .close()
+                .map_err(|e| errors::NavigatorError::Clingo(e))
+                .ok()?;
+            x
+        } else {
+            handle
+                .close()
+                .map_err(|e| errors::NavigatorError::Clingo(e))
+                .ok()?;
+            None
+        }
+    }
+
     /// Enumerates solutions under current route extended by facets in **route**, quietly.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
