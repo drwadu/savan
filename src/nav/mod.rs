@@ -256,11 +256,11 @@ impl Navigator {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<Vec<String>> {
-        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl).ok()?;
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl).unwrap();
         let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
         let mut handle = ctl
             .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())
-            .ok()?;
+            .unwrap();
 
         if let Ok(Some(answer_set)) = handle.model() {
             let x = Some(
