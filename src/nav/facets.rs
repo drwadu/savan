@@ -39,6 +39,59 @@ pub(crate) fn consequences(
     Some(xs)
 }
 
+pub(crate) fn consequences_projecting(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    kind: &str,
+) -> Option<Vec<Symbol>> {
+    let mut ctl = nav.ctl.take()?;
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                .map(|sk| c.value_set(sk, kind))
+                .ok()
+        })
+        .ok()?;
+
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.project"))
+                .map(|sk| c.value_set(sk, "show"))
+                .ok()
+        })
+        .ok()?;
+
+    let mut xs = vec![];
+    let mut handle = ctl.solve(clingo::SolveMode::YIELD, route).ok()?;
+
+    while let Ok(Some(ys)) = handle.model() {
+        xs = ys.symbols(clingo::ShowType::SHOWN).ok()?;
+        handle.resume().ok()?;
+    }
+    let mut ctl = handle.close().ok()?;
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                .map(|sk| c.value_set(sk, "auto"))
+                .ok()
+        })
+        .ok()?;
+    ctl.configuration_mut()
+        .map(|c| {
+            c.root()
+                .and_then(|rk| c.map_at(rk, "solve.project"))
+                .map(|sk| c.value_set(sk, "auto"))
+                .ok()
+        })
+        .ok()?;
+    nav.ctl = Some(ctl);
+
+    Some(xs)
+}
+
 pub(crate) fn consequences_count(
     nav: &mut Navigator,
     route: &[SolverLiteral],
@@ -92,6 +145,11 @@ pub trait Facets {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<HashSet<Symbol>>;
+    ///
+    fn facet_inducing_atoms_projecting<S: ToString>(
+        &mut self,
+        route: impl Iterator<Item = S>,
+    ) -> Option<HashSet<Symbol>>;
     /// Prints literals modeled under **route**, and returns facet-inducing atoms under **route**.
     fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>>;
     /// Returns facet-inducing atoms found under **route** with custom algorithm.
@@ -138,6 +196,27 @@ impl Facets for Navigator {
 
         match !bcs.is_empty() {
             true => consequences(self, &route, "cautious")
+                .as_ref()
+                .and_then(|ccs| Some(bcs.difference_as_set(ccs))),
+            _ => Some(bcs.to_hashset()),
+        }
+    }
+
+    fn facet_inducing_atoms_projecting<S: ToString>(
+        &mut self,
+        peek_on: impl Iterator<Item = S>,
+    ) -> Option<HashSet<Symbol>> {
+        let route = peek_on
+            .map(|s| self.expression_to_literal(s))
+            .flatten()
+            .collect::<Vec<_>>();
+
+
+
+        let bcs = consequences_projecting(self, &route, "brave")?;
+
+        match !bcs.is_empty() {
+            true => consequences_projecting(self, &route, "cautious")
                 .as_ref()
                 .and_then(|ccs| Some(bcs.difference_as_set(ccs))),
             _ => Some(bcs.to_hashset()),
