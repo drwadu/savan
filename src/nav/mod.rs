@@ -272,15 +272,18 @@ impl Navigator {
                     .collect::<Vec<_>>(),
             );
 
-            handle
+            let ctl = handle
                 .close()
                 .map_err(|e| errors::NavigatorError::Clingo(e)).unwrap();
+            self.ctl = Some(ctl);
+
             x
         } else {
-            handle
+            let ctl = handle
                 .close()
-                .map_err(|e| errors::NavigatorError::Clingo(e))
-                .unwrap();
+                .map_err(|e| errors::NavigatorError::Clingo(e)).unwrap();
+            self.ctl = Some(ctl);
+
             None
         }
     }
