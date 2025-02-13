@@ -140,6 +140,11 @@ pub trait Facets {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>>;
+    /// 
+    fn cautious_consequences_projecting<S: ToString>(
+        &mut self,
+        route: impl Iterator<Item = S>,
+    ) -> Option<Vec<Symbol>>;
     /// Returns facet-inducing atoms found under **route**.
     fn facet_inducing_atoms<S: ToString>(
         &mut self,
@@ -181,6 +186,18 @@ impl Facets for Navigator {
             .collect::<Vec<_>>();
 
         consequences(self, &route, "cautious")
+    }
+
+    fn cautious_consequences_projecting<S: ToString>(
+        &mut self,
+        peek_on: impl Iterator<Item = S>,
+    ) -> Option<Vec<Symbol>> {
+        let route = peek_on
+            .map(|s| self.expression_to_literal(s))
+            .flatten()
+            .collect::<Vec<_>>();
+
+        consequences_projecting(self, &route, "cautious")
     }
 
     fn facet_inducing_atoms<S: ToString>(
