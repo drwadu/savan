@@ -115,7 +115,7 @@ impl Collect for Navigator {
                 .ok()?
                 == false
             {
-                continue;
+                break;
             }
 
             #[allow(clippy::needless_collect)]
