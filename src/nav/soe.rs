@@ -9,7 +9,7 @@ pub trait Collect {
     fn sieve_quiet(
         &mut self,
         target_atoms: &[String],
-    ) -> Option<(Vec<String>, Vec<String>, String)>;
+    ) -> Option<Vec<String>>;
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()>;
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>>;
 }
@@ -88,7 +88,7 @@ impl Collect for Navigator {
     fn sieve_quiet(
         &mut self,
         target_atoms: &[String],
-    ) -> Option<(Vec<String>, Vec<String>, String)> {
+    ) -> Option<Vec<String>> {
         let mut or = ":-".to_owned();
         target_atoms.iter().for_each(|atom| {
             or = format!("{or} not {atom},");
@@ -115,11 +115,7 @@ impl Collect for Navigator {
                 .ok()?
                 == false
             {
-                return Some(
-                    (to_observe.iter().cloned().collect::<Vec<_>>(),
-                    true_somewhere,
-                    target_atom.to_string())
-                );
+                continue;
             }
 
             #[allow(clippy::needless_collect)]
@@ -155,7 +151,7 @@ impl Collect for Navigator {
 
         self.remove_rule(or).ok()?;
 
-        None
+        Some(true_somewhere)
     }
 
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>> {
