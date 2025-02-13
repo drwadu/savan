@@ -6,7 +6,10 @@ use std::collections::{HashMap, HashSet};
 
 pub trait Collect {
     fn sieve(&mut self, target_atoms: &[String]) -> super::Result<()>;
-    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<String>;
+    fn sieve_quiet(
+        &mut self,
+        target_atoms: &[String],
+    ) -> Option<(Vec<String>, Vec<String>, String)>;
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()>;
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>>;
 }
@@ -82,7 +85,10 @@ impl Collect for Navigator {
         self.remove_rule(or)
     }
 
-    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<String> {
+    fn sieve_quiet(
+        &mut self,
+        target_atoms: &[String],
+    ) -> Option<(Vec<String>, Vec<String>, String)> {
         let mut or = ":-".to_owned();
         target_atoms.iter().for_each(|atom| {
             or = format!("{or} not {atom},");
@@ -92,6 +98,7 @@ impl Collect for Navigator {
         self.add_rule(or.clone()).ok()?;
 
         let mut to_observe = target_atoms.to_vec().to_hashset();
+        let mut true_somewhere = vec![];
 
         while !to_observe.is_empty() {
             let (target_atom, target) = to_observe
@@ -108,7 +115,11 @@ impl Collect for Navigator {
                 .ok()?
                 == false
             {
-                return Some(target_atom.to_string());
+                return Some(
+                    (to_observe.iter().cloned().collect::<Vec<_>>(),
+                    true_somewhere,
+                    target_atom.to_string())
+                );
             }
 
             #[allow(clippy::needless_collect)]
@@ -116,7 +127,13 @@ impl Collect for Navigator {
                 if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
                     match atoms
                         .iter()
-                        .map(|a| to_observe.remove(&a.to_string()))
+                        .map(|a| {
+                            let v = to_observe.remove(&a.to_string());
+                            if v {
+                                true_somewhere.push(a.to_string())
+                            }
+                            v
+                        })
                         .collect::<Vec<_>>()
                         .iter()
                         .any(|v| *v)
