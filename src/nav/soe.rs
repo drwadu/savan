@@ -109,14 +109,14 @@ impl Collect for Navigator {
             let ctl = self.ctl.take()?;
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &[target]).ok()?;
 
-            if solve_handle
-                .get()
-                .map(|r| r == clingo::SolveResult::SATISFIABLE)
-                .ok()?
-                == false
-            {
-                break;
-            }
+            //if solve_handle
+            //    .get()
+            //    .map(|r| r == clingo::SolveResult::SATISFIABLE)
+            //    .ok()?
+            //    == false
+            //{
+            //    continue;
+            //}
 
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
