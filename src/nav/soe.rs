@@ -6,10 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 pub trait Collect {
     fn sieve(&mut self, target_atoms: &[String]) -> super::Result<()>;
-    fn sieve_quiet(
-        &mut self,
-        target_atoms: &[String],
-    ) -> Option<Vec<String>>;
+    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<Vec<String>>;
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()>;
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>>;
 }
@@ -85,10 +82,7 @@ impl Collect for Navigator {
         self.remove_rule(or)
     }
 
-    fn sieve_quiet(
-        &mut self,
-        target_atoms: &[String],
-    ) -> Option<Vec<String>> {
+    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<Vec<String>> {
         let mut or = ":-".to_owned();
         target_atoms.iter().for_each(|atom| {
             or = format!("{or} not {atom},");
@@ -101,22 +95,27 @@ impl Collect for Navigator {
         let mut true_somewhere = vec![];
 
         while !to_observe.is_empty() {
-            let (target_atom, target) = to_observe
+            dbg!(to_observe.len());
+            let (target_atom, target) = to_observe //.clone()
                 .iter()
                 .next()
-                .map(|a| (a, self.expression_to_literal(a).unwrap()))?;
+                .map(|a| (a.clone(), self.expression_to_literal(a).unwrap()))?;
 
             let ctl = self.ctl.take()?;
             let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &[target]).ok()?;
 
-            //if solve_handle
-            //    .get()
-            //    .map(|r| r == clingo::SolveResult::SATISFIABLE)
-            //    .ok()?
-            //    == false
-            //{
-            //    continue;
-            //}
+            if solve_handle
+                .get()
+                .map(|r| r == clingo::SolveResult::SATISFIABLE)
+                .ok()?
+                == false
+            {
+                to_observe.remove(&target_atom);
+
+                let ctl = solve_handle.close().ok()?;
+                self.ctl = Some(ctl);
+                continue;
+            }
 
             #[allow(clippy::needless_collect)]
             while let Ok(Some(model)) = solve_handle.model() {
