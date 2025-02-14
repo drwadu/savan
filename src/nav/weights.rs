@@ -10,6 +10,15 @@ pub fn count<S: ToString>(
     weighting_function.count(nav, route)
 }
 
+/// Returns count of specified weighting function under route, while projecting on shown atoms.
+pub fn count_projecting<S: ToString>(
+    weighting_function: &mut impl WeightingFunction,
+    nav: &mut Navigator,
+    route: impl Iterator<Item = S>,
+) -> Option<usize> {
+    weighting_function.count_projecting(nav, route)
+}
+
 /// The weight of a facet.
 #[derive(Debug, Clone)]
 pub enum Weight {
@@ -72,7 +81,8 @@ impl WeightingFunction for Weight {
                     brave_consequences_count
                 } else {
                     brave_consequences_count.and_then(|bcs| {
-                        consequences_count_projecting(nav, &route, "cautious").map(|ccs| 2 * (bcs - ccs))
+                        consequences_count_projecting(nav, &route, "cautious")
+                            .map(|ccs| 2 * (bcs - ccs))
                     })
                 }
             }

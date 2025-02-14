@@ -1,6 +1,6 @@
 [package]
 name = "savan"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 authors = ["drwadu"]
 description = "core library for answer set navigation."
