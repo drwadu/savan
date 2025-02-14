@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 pub trait Collect {
     fn sieve(&mut self, target_atoms: &[String]) -> super::Result<()>;
+    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<Vec<String>>;
     fn sieve_verbose(&mut self, target_atoms: &[String]) -> super::Result<()>;
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>>;
 }
@@ -79,6 +80,77 @@ impl Collect for Navigator {
         }
 
         self.remove_rule(or)
+    }
+
+    fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<Vec<String>> {
+        //let mut or = ":-".to_owned();
+        //target_atoms.iter().for_each(|atom| {
+        //    or = format!("{or} not {atom},");
+        //});
+
+        //or = format!("{}.", &or[..or.len() - 1]);
+        //self.add_rule(or.clone()).ok()?;
+
+        let mut to_observe = target_atoms.to_vec().to_hashset();
+        let mut true_somewhere = vec![];
+
+        while !to_observe.is_empty() {
+            //dbg!(to_observe.len());
+            let (target_atom, target) = to_observe //.clone()
+                .iter()
+                .next()
+                .map(|a| (a.clone(), self.expression_to_literal(a).unwrap()))?;
+
+            let ctl = self.ctl.take()?;
+            let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &[target]).ok()?;
+
+            if solve_handle
+                .get()
+                .map(|r| r == clingo::SolveResult::SATISFIABLE)
+                .ok()?
+                == false
+            {
+                to_observe.remove(&target_atom);
+
+                let ctl = solve_handle.close().ok()?;
+                self.ctl = Some(ctl);
+                continue;
+            }
+
+            #[allow(clippy::needless_collect)]
+            while let Ok(Some(model)) = solve_handle.model() {
+                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
+                    match atoms
+                        .iter()
+                        .map(|a| {
+                            let v = to_observe.remove(&a.to_string());
+                            if v {
+                                true_somewhere.push(a.to_string())
+                            }
+                            v
+                        })
+                        .collect::<Vec<_>>()
+                        .iter()
+                        .any(|v| *v)
+                    {
+                        true => {
+                            break;
+                        }
+                        _ => {
+                            solve_handle.resume().ok()?;
+                            continue;
+                        } // did not observe anything new
+                    }
+                }
+            }
+
+            let ctl = solve_handle.close().ok()?;
+            self.ctl = Some(ctl);
+        }
+
+        //self.remove_rule(or).ok()?;
+
+        Some(true_somewhere)
     }
 
     fn sieve_outf2(&mut self, target_atoms: &[String]) -> super::Result<Vec<String>> {

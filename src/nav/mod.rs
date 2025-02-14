@@ -9,7 +9,7 @@ use crate::lex;
 use errors::Result;
 
 use clingo::{Control, Part, SolverLiteral, Symbol};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use self::errors::NavigatorError;
 
@@ -250,6 +250,44 @@ impl Navigator {
         return Ok(out);
     }
 
+    ///
+    #[allow(unused_assignments)]
+    pub fn one_or_none<S: ToString>(
+        &mut self,
+        route: impl Iterator<Item = S>,
+    ) -> Option<Vec<String>> {
+        let ctl = self.ctl.take().ok_or(NavigatorError::NoControl).unwrap();
+        let ctx = route.map(|s| self.expression_to_literal(s)).flatten();
+        let mut handle = ctl
+            .solve(clingo::SolveMode::YIELD, &ctx.collect::<Vec<_>>())
+            .unwrap();
+
+        if let Ok(Some(answer_set)) = handle.model() {
+            let x = Some(
+                answer_set
+                    .symbols(clingo::ShowType::SHOWN).unwrap()
+                    .clone()
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>(),
+            );
+
+            let ctl = handle
+                .close()
+                .map_err(|e| errors::NavigatorError::Clingo(e)).unwrap();
+            self.ctl = Some(ctl);
+
+            x
+        } else {
+            let ctl = handle
+                .close()
+                .map_err(|e| errors::NavigatorError::Clingo(e)).unwrap();
+            self.ctl = Some(ctl);
+
+            None
+        }
+    }
+
     /// Enumerates solutions under current route extended by facets in **route**, quietly.
     ///
     /// Will enumerate all existing solutions, if **upper_bound** is
@@ -304,6 +342,15 @@ impl Navigator {
         self.literals.keys().map(|sym| sym.to_string())
     }
 
+    /// Returns atoms of ground program.
+    pub fn symbols(&self) -> impl Iterator<Item = (String, usize)> + '_ {
+        self.literals
+            .keys()
+            .map(|s| (s.name().unwrap().to_owned(), s.arguments().unwrap().len()))
+            .collect::<HashSet<_>>()
+            .into_iter()
+    }
+
     /// Adds specified `rule` from logic program.
     pub fn add_rule<S: std::fmt::Display>(&mut self, rule: S) -> Result<()> {
         let (source, args) = &self.source;
@@ -318,6 +365,28 @@ impl Navigator {
         let (source, args) = &self.source;
         let new_source = source.replace(&rule.to_string(), "");
         *self = Navigator::new(new_source, args.to_vec())?;
+
+        Ok(())
+    }
+
+    /// Adds specified `argument`.
+    pub fn add_arg<S: std::fmt::Display>(&mut self, arg: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let mut new_args = args.clone();
+        new_args.push(arg.to_string());
+        *self = Navigator::new(source, new_args.to_vec())?;
+
+        Ok(())
+    }
+
+    /// Removes specified `argument`.
+    pub fn remove_arg<S: std::fmt::Display>(&mut self, arg: S) -> Result<()> {
+        let (source, args) = &self.source;
+        let mut new_args = args.clone();
+        new_args.push(arg.to_string());
+        let i = args.iter().position(|x| *x == arg.to_string()).unwrap();
+        new_args.remove(i);
+        *self = Navigator::new(source, new_args.to_vec())?;
 
         Ok(())
     }
