@@ -83,19 +83,19 @@ impl Collect for Navigator {
     }
 
     fn sieve_quiet(&mut self, target_atoms: &[String]) -> Option<Vec<String>> {
-        let mut or = ":-".to_owned();
-        target_atoms.iter().for_each(|atom| {
-            or = format!("{or} not {atom},");
-        });
+        //let mut or = ":-".to_owned();
+        //target_atoms.iter().for_each(|atom| {
+        //    or = format!("{or} not {atom},");
+        //});
 
-        or = format!("{}.", &or[..or.len() - 1]);
-        self.add_rule(or.clone()).ok()?;
+        //or = format!("{}.", &or[..or.len() - 1]);
+        //self.add_rule(or.clone()).ok()?;
 
         let mut to_observe = target_atoms.to_vec().to_hashset();
         let mut true_somewhere = vec![];
 
         while !to_observe.is_empty() {
-            dbg!(to_observe.len());
+            //dbg!(to_observe.len());
             let (target_atom, target) = to_observe //.clone()
                 .iter()
                 .next()
@@ -148,7 +148,7 @@ impl Collect for Navigator {
             self.ctl = Some(ctl);
         }
 
-        self.remove_rule(or).ok()?;
+        //self.remove_rule(or).ok()?;
 
         Some(true_somewhere)
     }

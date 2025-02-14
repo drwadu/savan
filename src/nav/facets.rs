@@ -130,8 +130,17 @@ pub(crate) fn consequences_count(
 
 /// Functionalities revolving around facets of a program.
 pub trait Facets {
+    /// Colors for truth values.
+    const T: &'static str = "\x1b[0;30;42m[T]\x1b[0m";
+    const U: &'static str = "\x1b[0;30;44m[U]\x1b[0m";
+    const F: &'static str = "\x1b[0;30;41m[F]\x1b[0m";
     /// Returns brave consequences found under **route**.
     fn brave_consequences<S: ToString>(
+        &mut self,
+        route: impl Iterator<Item = S>,
+    ) -> Option<Vec<Symbol>>;
+    /// Returns brave consequences found under **route**, while projecting onto shown atoms.
+    fn brave_consequences_projecting<S: ToString>(
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>>;
@@ -140,7 +149,7 @@ pub trait Facets {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>>;
-    /// 
+    /// Returns cautious consequences found under **route**, while projecting onto shown atoms.
     fn cautious_consequences_projecting<S: ToString>(
         &mut self,
         route: impl Iterator<Item = S>,
@@ -150,18 +159,24 @@ pub trait Facets {
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<HashSet<Symbol>>;
-    ///
+    /// Returns facet-inducing atoms found under **route**, while projecting onto shown atoms.
     fn facet_inducing_atoms_projecting<S: ToString>(
         &mut self,
         route: impl Iterator<Item = S>,
     ) -> Option<HashSet<Symbol>>;
     /// Prints literals modeled under **route**, and returns facet-inducing atoms under **route**.
-    fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>>;
-    /// Returns facet-inducing atoms found under **route** with custom algorithm.
-    fn facets_su<S: ToString>(
+    fn learned_that(
         &mut self,
-        peek_on: impl Iterator<Item = S>,
-        target_atoms: &[String],
+        facets: &[String],
+        route: &[String],
+        write_to: Option<String>,
+    ) -> Option<Vec<String>>;
+    /// Prints literals modeled under **route**, and returns facet-inducing atoms under **route**, while projecting onto shown atoms.
+    fn learned_that_projecting(
+        &mut self,
+        facets: &[String],
+        route: &[String],
+        write_to: Option<String>,
     ) -> Option<Vec<String>>;
 }
 impl Facets for Navigator {
@@ -174,6 +189,18 @@ impl Facets for Navigator {
             .flatten()
             .collect::<Vec<_>>();
         consequences(self, &route, "brave")
+    }
+
+    fn brave_consequences_projecting<S: ToString>(
+        &mut self,
+        peek_on: impl Iterator<Item = S>,
+    ) -> Option<Vec<Symbol>> {
+        let route = peek_on
+            .map(|s| self.expression_to_literal(s))
+            .flatten()
+            .collect::<Vec<_>>();
+
+        consequences_projecting(self, &route, "brave")
     }
 
     fn cautious_consequences<S: ToString>(
@@ -228,8 +255,6 @@ impl Facets for Navigator {
             .flatten()
             .collect::<Vec<_>>();
 
-
-
         let bcs = consequences_projecting(self, &route, "brave")?;
 
         match !bcs.is_empty() {
@@ -240,143 +265,12 @@ impl Facets for Navigator {
         }
     }
 
-    fn facets_su<S: ToString>(
+    fn learned_that(
         &mut self,
-        peek_on: impl Iterator<Item = S>,
-        target_atoms: &[String],
+        facets: &[String],
+        route: &[String],
+        write_to: Option<String>,
     ) -> Option<Vec<String>> {
-        let mut route = peek_on
-            .map(|s| self.expression_to_literal(s))
-            .flatten()
-            .collect::<Vec<_>>();
-
-        // TODO: adjust or-constraint?
-        // TODO: impact of show statements
-        // TODO: adjust show statements?
-        // TODO: progress bar
-
-        // compute bcs
-        let mut bcs = vec![].to_hashset();
-        let mut or = ":-".to_owned();
-        target_atoms.iter().for_each(|atom| {
-            or = format!("{or} not {atom},");
-        });
-        or = format!("{}.", &or[..or.len() - 1]);
-        self.add_rule(or.clone()).ok()?;
-        let mut to_observe = target_atoms.to_vec().to_hashset();
-        while !to_observe.is_empty() {
-            dbg!("bcs", to_observe.len());
-            let (target_atom, target) = to_observe
-                .iter()
-                .next()
-                .and_then(|a| Some((a.clone(), self.expression_to_literal(a).unwrap())))?;
-            let ctl = self.ctl.take()?;
-            // try to find an answer set that contains target
-            route.push(target);
-            //dbg!("bc", &to_observe, &route, &target_atom.to_string());
-            let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
-            if solve_handle
-                .get()
-                .map(|r| r == clingo::SolveResult::SATISFIABLE)
-                .ok()?
-                == false
-            {
-                // target atom is not a facet, because target is false
-                to_observe.remove(&target_atom);
-            }
-            #[allow(clippy::needless_collect)]
-            while let Ok(Some(model)) = solve_handle.model() {
-                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
-                    match atoms
-                        .iter()
-                        .map(|a| to_observe.remove(&a.to_string()) && bcs.insert(a.clone()))
-                        .collect::<Vec<_>>()
-                        .iter()
-                        .any(|v| *v)
-                    {
-                        true => break,
-                        _ => {
-                            solve_handle.resume().ok()?;
-                            continue;
-                        } // did not observe anything new
-                    }
-                }
-            }
-            let ctl = solve_handle.close().ok()?;
-            self.ctl = Some(ctl);
-            route.pop();
-        }
-        self.remove_rule(or).ok()?;
-
-        // compute ccs
-        let mut fcs = vec![];
-        let mut or = ":-".to_owned();
-        bcs.iter().for_each(|atom| {
-            or = format!("{or} {atom},");
-        });
-        or = format!("{}.", &or[..or.len() - 1]);
-        self.add_rule(or.clone()).ok()?;
-        let mut to_observe = bcs.clone();
-        while !to_observe.is_empty() {
-            dbg!("ccs", to_observe.len());
-            let (target_atom, target) = to_observe
-                .iter()
-                .next()
-                .and_then(|a| Some((a.clone(), self.expression_to_literal(a).unwrap())))?;
-            let ctl = self.ctl.take()?;
-            // try to find an answer set that omits target
-            route.push(target.negate());
-            //dbg!("cc", &to_observe, &route, &target_atom.to_string(), &fcs);
-            let mut solve_handle = ctl.solve(clingo::SolveMode::YIELD, &route).ok()?;
-            if solve_handle
-                .get()
-                .map(|r| r == clingo::SolveResult::SATISFIABLE)
-                .ok()?
-                == false
-            {
-                // target is not a facet, because target is true
-                to_observe.remove(&target_atom);
-            }
-            dbg!("passed check");
-            #[allow(clippy::needless_collect)]
-            while let Ok(Some(model)) = solve_handle.model() {
-                if let Ok(atoms) = model.symbols(clingo::ShowType::SHOWN) {
-                    dbg!(&atoms.iter().map(|a| a.to_string()).collect::<Vec<_>>());
-                    match to_observe
-                        .clone()
-                        .iter()
-                        .map(|a| {
-                            if !atoms.contains(&a) {
-                                to_observe.remove(&a);
-                                fcs.push(a.to_string());
-                                true
-                            } else {
-                                false
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .iter()
-                        .any(|v| *v)
-                    {
-                        true => break,
-                        _ => {
-                            solve_handle.resume().ok()?;
-                            dbg!("no news", &or);
-                            continue;
-                        } // did not observe anything new
-                    }
-                }
-            }
-            let ctl = solve_handle.close().ok()?;
-            self.ctl = Some(ctl);
-            route.pop();
-        }
-        self.remove_rule(or).ok()?;
-
-        Some(fcs)
-    }
-
-    fn learned_that(&mut self, facets: &[String], route: &[String]) -> Option<Vec<String>> {
         let bc = self
             .brave_consequences(route.iter())
             .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
@@ -384,13 +278,55 @@ impl Facets for Navigator {
             .cautious_consequences(route.iter())
             .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
 
-        facets.into_iter().for_each(|f| match cc.contains(&f) {
-            true => println!("{f}"),
-            _ => match !bc.contains(&f) {
-                true => println!("~{f}"),
-                _ => (),
-            },
-        });
+        if let Some(_path) = write_to {
+            todo!()
+        }
+        {
+            facets.into_iter().for_each(|f| match cc.contains(&f) {
+                true => println!("{f}"),
+                _ => match !bc.contains(&f) {
+                    true => println!("~{f}"),
+                    _ => (),
+                },
+            });
+        }
+
+        match !bc.is_empty() {
+            true => Some(
+                bc.difference_as_set(&cc)
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            ),
+            _ => Some(bc),
+        }
+    }
+
+    fn learned_that_projecting(
+        &mut self,
+        facets: &[String],
+        route: &[String],
+        write_to: Option<String>,
+    ) -> Option<Vec<String>> {
+        let bc = self
+            .brave_consequences_projecting(route.iter())
+            .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
+        let cc = self
+            .cautious_consequences_projecting(route.iter())
+            .map(|xs| xs.iter().map(|f| f.to_string()).collect::<Vec<_>>())?;
+
+        if let Some(_path) = write_to {
+            todo!()
+        }
+        {
+            facets.into_iter().for_each(|f| match cc.contains(&f) {
+                true => println!("{f}"),
+                _ => match !bc.contains(&f) {
+                    true => println!("~{f}"),
+                    _ => (),
+                },
+            });
+        }
 
         match !bc.is_empty() {
             true => Some(
@@ -511,6 +447,7 @@ mod tests {
                     "d".to_owned(),
                 ],
                 &vec!["a".to_owned()],
+                None,
             )
             .ok_or(NavigatorError::None)?;
         assert_eq!(fs.len(), 0);
